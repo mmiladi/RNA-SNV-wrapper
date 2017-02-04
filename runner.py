@@ -9,22 +9,29 @@ from tempfile import NamedTemporaryFile
 from subprocess import Popen, PIPE
 from StringIO import StringIO
 import time
+from math import ceil
 
-rase_root_dir = '/home/miladim/repositories/RaSE/'
-rase_src_dir = os.path.join(rase_root_dir, 'code')
-sys.path = [rase_src_dir] + sys.path
+# rase_root_dir = os.path.join(os.environ['HOME'], 'repositories/RaSE/')
+# rase_src_dir = os.path.join(rase_root_dir, 'code')
+# sys.path = [rase_src_dir] + sys.path
 
-eden_root_dir = '/home/miladim/repositories/EDeN/'
-eden_src_dir = os.path.join(eden_root_dir)
-sys.path = [eden_src_dir] + sys.path
+# eden_root_dir = os.path.join(os.environ['HOME'],'repositories/EDeN/')
+# eden_src_dir = os.path.join(eden_root_dir)
+# sys.path = [eden_src_dir] + sys.path
 
-from RaSE import make_fold, make_fold_vectorize
+# from RaSE import make_fold, make_fold_vectorize
 
 def main(argv):
 
     input_file = sys.argv[1]
     output_file_prefix = sys.argv[2]
-    
+    if len(sys.argv) > 3:
+        num_splits = int(sys.argv[3])
+        split_id = int(sys.argv[4])
+    else:
+        num_splits = 1
+        split_id = 0
+        
     start_time = time.time()
 
     #initiate empty dataframes for RNAsnp
@@ -35,8 +42,11 @@ def main(argv):
     
     rase_scores =[]
     lcount = 0
-    fasta_sequences = SeqIO.parse(open(input_file),'fasta')
-    for fasta in fasta_sequences:
+    fasta_sequences = list(SeqIO.parse(open(input_file),'fasta'))
+    total_size = len(fasta_sequences)
+    ranges =  range(0, total_size+1, int(ceil(total_size/float(num_splits)) ))
+    print 'runner on range: ', ranges[split_id], ranges[split_id+1]
+    for fasta in fasta_sequences[ranges[split_id]: ranges[split_id+1]]:
         lcount += 1
         print '\r{}..' .format(lcount), 
         id, desc, sequence = fasta.id,fasta.description, str(fasta.seq)
@@ -59,11 +69,12 @@ def main(argv):
         df_remurna = df_remurna.append(res_remurna, ignore_index=True)
 
         ##run RaSE
-        rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=200)]]
+        # rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=200)]]
                     
         # remove temp file
         os.remove(tmp_seq_fa.name)
         
+    output_file_prefix += "_"+str(split_id)
     df1 = df_rnasnp.set_index('ID')
     df1['tool-parameters:windows|size=200']=''   
     df1.to_csv(path_or_buf=output_file_prefix+"_rnasnp.csv",sep="\t")
