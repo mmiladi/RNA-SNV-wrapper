@@ -10,15 +10,15 @@ from subprocess import Popen, PIPE
 from StringIO import StringIO
 import time
 
-#rase_root_dir = '/home/wanliz/repositories/RaSE/'
-#rase_src_dir = os.path.join(rase_root_dir, 'code')
-#sys.path = [rase_src_dir] + sys.path
+rase_root_dir = '/home/miladim/repositories/RaSE/'
+rase_src_dir = os.path.join(rase_root_dir, 'code')
+sys.path = [rase_src_dir] + sys.path
 
-#eden_root_dir = '/home/wanliz/repositories/EDeN/'
-#eden_src_dir = os.path.join(eden_root_dir)
-#sys.path = [eden_src_dir] + sys.path
+eden_root_dir = '/home/miladim/repositories/EDeN/'
+eden_src_dir = os.path.join(eden_root_dir)
+sys.path = [eden_src_dir] + sys.path
 
-#from RaSE import make_fold, make_fold_vectorize
+from RaSE import make_fold, make_fold_vectorize
 
 def main(argv):
 
@@ -34,21 +34,22 @@ def main(argv):
     df_remurna= pd.DataFrame(columns=['SNP','MFE(wt)','MFE(mu)','dMFE','H(wt||mu)','GCratio','ID'])
     
     rase_scores =[]
-    
+    lcount = 0
     fasta_sequences = SeqIO.parse(open(input_file),'fasta')
     for fasta in fasta_sequences:
+        lcount += 1
+        print '\r{}..' .format(lcount), 
         id, desc, sequence = fasta.id,fasta.description, str(fasta.seq)
-        
         #extract snp from description or id
-        snp = [desc[len(desc)-3] + "101"+ desc[len(desc)-1]]
-
+        snp = [desc[len(desc)-5] + "201"+ desc[len(desc)-1]]
+        print snp,
         tmp_seq_fa = NamedTemporaryFile(suffix='.fa', delete=False)
         tmp_seq_fa.write(">" +desc + "\n")
         tmp_seq_fa.write(sequence)
         tmp_seq_fa.close()
 
         #run RNAsnp
-        res_rnasnp=run_RNAsnp(tmp_seq_fa.name,snp,100)
+        res_rnasnp=run_RNAsnp(tmp_seq_fa.name,snp,200)
         res_rnasnp=res_rnasnp.assign(ID=id)
         df_rnasnp = df_rnasnp.append(res_rnasnp, ignore_index=True)
         
@@ -58,23 +59,23 @@ def main(argv):
         df_remurna = df_remurna.append(res_remurna, ignore_index=True)
 
         ##run RaSE
-        #rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp)]]
+        rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=200)]]
                     
         # remove temp file
         os.remove(tmp_seq_fa.name)
         
     df1 = df_rnasnp.set_index('ID')
-    df1['tool-parameters:windows|size=100']=''   
+    df1['tool-parameters:windows|size=200']=''   
     df1.to_csv(path_or_buf=output_file_prefix+"_rnasnp.csv",sep="\t")
     
     df2 = df_remurna.set_index('ID')
     df2['tool-parameters:']=''
     df2.to_csv(path_or_buf=output_file_prefix+"_remurna.csv",sep="\t")
     
-    #df_rase= pd.DataFrame(rase_scores,columns=['ID','SNP','Score'])
-    #df_rase =df_rase.set_index('ID')
-    #df_rase['tool-parameters:window=150|avg_bp_prob_cutoff=0.01|hard_threshold=0.5|max_num_edges=3']='' 
-    #df_rase.to_csv(path_or_buf=output_file_prefix+"_rase.csv",sep="\t")
+    df_rase= pd.DataFrame(rase_scores,columns=['ID','SNP','Score'])
+    df_rase =df_rase.set_index('ID')
+    df_rase['tool-parameters:window=200|avg_bp_prob_cutoff=0.01|hard_threshold=0.5|max_num_edges=3']='' 
+    df_rase.to_csv(path_or_buf=output_file_prefix+"_rase.csv",sep="\t")
     
 
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -201,7 +202,7 @@ def run_RaSE(wild_seq, snp_tags, window=150, avg_bp_prob_cutoff=0.01,
     tag_tup = (tag_tup[0], int(tag_tup[1])-1, tag_tup[2]) 
     
     fold = make_fold(window_size=window,
-                          max_bp_span=window-50,
+                          max_bp_span=int(window*(0.80)),
                           avg_bp_prob_cutoff=avg_bp_prob_cutoff,
                           hard_threshold=hard_threshold,
                           max_num_edges=max_num_edges,
@@ -210,7 +211,7 @@ def run_RaSE(wild_seq, snp_tags, window=150, avg_bp_prob_cutoff=0.01,
     fold_vectorize = make_fold_vectorize(complexity=3, nbits=15, fold=fold)
     from RaSE import compute_SNP_stability
     score = compute_SNP_stability(wild_seq, snp_tag=tag_tup, fold_vectorize=fold_vectorize)
-    print 'Rase-Score:', score
+    # print 'Rase-Score:', score
     return score
 
 
