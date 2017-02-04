@@ -9,7 +9,7 @@ from tempfile import NamedTemporaryFile
 from subprocess import Popen, PIPE
 from StringIO import StringIO
 import time
-from math import ceil
+from math import ceil, floor
 
 # rase_root_dir = os.path.join(os.environ['HOME'], 'repositories/RaSE/')
 # rase_src_dir = os.path.join(rase_root_dir, 'code')
@@ -44,8 +44,13 @@ def main(argv):
     lcount = 0
     fasta_sequences = list(SeqIO.parse(open(input_file),'fasta'))
     total_size = len(fasta_sequences)
-    ranges =  range(0, total_size+1, int(ceil(total_size/float(num_splits)) ))
+    ranges =  range(0, total_size, int(floor(total_size/float(num_splits)) ))
+    print ranges
+    if ranges[-1] != total_size:
+        ranges.append(total_size)
+    print ranges
     print 'runner on range: ', ranges[split_id], ranges[split_id+1]
+
     for fasta in fasta_sequences[ranges[split_id]: ranges[split_id+1]]:
         lcount += 1
         print '\r{}..' .format(lcount), 
