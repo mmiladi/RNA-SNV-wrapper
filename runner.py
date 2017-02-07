@@ -10,6 +10,7 @@ from subprocess import Popen, PIPE
 from StringIO import StringIO
 import time
 from math import ceil, floor
+import re
 
 # rase_root_dir = os.path.join(os.environ['HOME'], 'repositories/RaSE/')
 # rase_src_dir = os.path.join(rase_root_dir, 'code')
@@ -25,9 +26,10 @@ def main(argv):
 
     input_file = sys.argv[1]
     output_file_prefix = sys.argv[2]
-    if len(sys.argv) > 3:
-        num_splits = int(sys.argv[3])
-        split_id = int(sys.argv[4])
+    window = int(sys.argv[3])
+    if len(sys.argv) > 4:
+        num_splits = int(sys.argv[4])
+        split_id = int(sys.argv[5])
     else:
         num_splits = 1
         split_id = 0
@@ -44,11 +46,11 @@ def main(argv):
     lcount = 0
     fasta_sequences = list(SeqIO.parse(open(input_file),'fasta'))
     total_size = len(fasta_sequences)
-    ranges =  range(0, total_size, int(floor(total_size/float(num_splits)) ))
-    print ranges
+    ranges =  range(0, total_size, int(ceil(total_size/float(num_splits)) ))
+    print 'runner.py args:' + ' '.join(sys.argv) 
     if ranges[-1] != total_size:
         ranges.append(total_size)
-    print ranges
+    print 'ranges: ', ranges
     print 'runner on range: ', ranges[split_id], ranges[split_id+1]
 
     for fasta in fasta_sequences[ranges[split_id]: ranges[split_id+1]]:
@@ -56,7 +58,11 @@ def main(argv):
         print '\r{}..' .format(lcount), 
         id, desc, sequence = fasta.id,fasta.description, str(fasta.seq)
         #extract snp from description or id
-        snp = [desc[len(desc)-5] + "201"+ desc[len(desc)-1]]
+        match = re.search("(\w\d+\w)$", desc)
+        if match is None:
+            raise RuntimeError('SNP tag not found for desc:{}'.format(desc))
+
+        snp = [match.group(1)]
         print snp,
         tmp_seq_fa = NamedTemporaryFile(suffix='.fa', delete=False)
         tmp_seq_fa.write(">" +desc + "\n")
