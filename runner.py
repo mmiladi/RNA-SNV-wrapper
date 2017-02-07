@@ -70,7 +70,7 @@ def main(argv):
         tmp_seq_fa.close()
 
         #run RNAsnp
-        res_rnasnp=run_RNAsnp(tmp_seq_fa.name,snp,200)
+        res_rnasnp=run_RNAsnp(tmp_seq_fa.name,snp,window)
         res_rnasnp=res_rnasnp.assign(ID=id)
         df_rnasnp = df_rnasnp.append(res_rnasnp, ignore_index=True)
         
@@ -80,7 +80,7 @@ def main(argv):
         df_remurna = df_remurna.append(res_remurna, ignore_index=True)
 
         ##run RaSE
-        # rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=200)]]
+        # rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=window)]]
                     
         # remove temp file
         os.remove(tmp_seq_fa.name)
