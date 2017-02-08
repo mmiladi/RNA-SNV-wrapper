@@ -12,15 +12,21 @@ import time
 from math import ceil, floor
 import re
 
-# rase_root_dir = os.path.join(os.environ['HOME'], 'repositories/RaSE/')
-# rase_src_dir = os.path.join(rase_root_dir, 'code')
-# sys.path = [rase_src_dir] + sys.path
 
-# eden_root_dir = os.path.join(os.environ['HOME'],'repositories/EDeN/')
-# eden_src_dir = os.path.join(eden_root_dir)
-# sys.path = [eden_src_dir] + sys.path
+rase_root_dir = os.path.join(os.environ['HOME'], 'repositories/RaSE/')
+rase_src_dir = os.path.join(rase_root_dir, 'code')
+sys.path = [rase_src_dir] + sys.path
 
-# from RaSE import make_fold, make_fold_vectorize
+eden_root_dir = os.path.join(os.environ['HOME'],'repositories/EDeN/')
+eden_src_dir = os.path.join(eden_root_dir)
+sys.path = [eden_src_dir] + sys.path
+
+
+edenrna_root_dir = os.path.join(os.environ['HOME'],'repositories/eden_rna/')
+edenrna_src_dir = os.path.join(edenrna_root_dir)
+sys.path = [edenrna_src_dir] + sys.path
+
+from RaSE import make_fold, make_fold_vectorize
 
 def main(argv):
 
@@ -48,11 +54,13 @@ def main(argv):
     total_size = len(fasta_sequences)
     ranges =  range(0, total_size, int(ceil(total_size/float(num_splits)) ))
     print 'runner.py args:' + ' '.join(sys.argv) 
+    print 'rangesA: ', ranges
     if ranges[-1] != total_size:
         ranges.append(total_size)
-    print 'ranges: ', ranges
+    print 'rangesB: ', ranges
     print 'runner on range: ', ranges[split_id], ranges[split_id+1]
-
+    runRnasnp = False
+    runRemurna = False
     for fasta in fasta_sequences[ranges[split_id]: ranges[split_id+1]]:
         lcount += 1
         print '\r{}..' .format(lcount), 
@@ -70,29 +78,33 @@ def main(argv):
         tmp_seq_fa.close()
 
         #run RNAsnp
-        res_rnasnp=run_RNAsnp(tmp_seq_fa.name,snp,window)
-        res_rnasnp=res_rnasnp.assign(ID=id)
-        df_rnasnp = df_rnasnp.append(res_rnasnp, ignore_index=True)
+        if runRnasnp:
+            res_rnasnp=run_RNAsnp(tmp_seq_fa.name,snp,window)
+            res_rnasnp=res_rnasnp.assign(ID=id)
+            df_rnasnp = df_rnasnp.append(res_rnasnp, ignore_index=True)
         
         #run remuRNA
-        res_remurna=run_remuRNA(tmp_seq_fa.name,snp)
-        res_remurna=res_remurna.assign(ID=id)
-        df_remurna = df_remurna.append(res_remurna, ignore_index=True)
+        if runRemurna:
+            res_remurna=run_remuRNA(tmp_seq_fa.name,snp)
+            res_remurna=res_remurna.assign(ID=id)
+            df_remurna = df_remurna.append(res_remurna, ignore_index=True)
 
         ##run RaSE
-        # rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=window)]]
+        rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=window)]]
                     
         # remove temp file
         os.remove(tmp_seq_fa.name)
         
     output_file_prefix += "_"+str(split_id)
-    df1 = df_rnasnp.set_index('ID')
-    df1['tool-parameters:windows|size=200']=''   
-    df1.to_csv(path_or_buf=output_file_prefix+"_rnasnp.csv",sep="\t")
+    if runRnasnp:
+        df1 = df_rnasnp.set_index('ID')
+        df1['tool-parameters:windows|size=200']=''   
+        df1.to_csv(path_or_buf=output_file_prefix+"_rnasnp.csv",sep="\t")
     
-    df2 = df_remurna.set_index('ID')
-    df2['tool-parameters:']=''
-    df2.to_csv(path_or_buf=output_file_prefix+"_remurna.csv",sep="\t")
+    if runRemurna:
+        df2 = df_remurna.set_index('ID')
+        df2['tool-parameters:']=''
+        df2.to_csv(path_or_buf=output_file_prefix+"_remurna.csv",sep="\t")
     
     df_rase= pd.DataFrame(rase_scores,columns=['ID','SNP','Score'])
     df_rase =df_rase.set_index('ID')
