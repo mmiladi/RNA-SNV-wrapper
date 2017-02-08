@@ -60,7 +60,8 @@ def main(argv):
     print 'rangesB: ', ranges
     print 'runner on range: ', ranges[split_id], ranges[split_id+1]
     runRnasnp = False
-    runRemurna = False
+    runRemurna = True#False
+    runRase = False
     for fasta in fasta_sequences[ranges[split_id]: ranges[split_id+1]]:
         lcount += 1
         print '\r{}..' .format(lcount), 
@@ -85,12 +86,13 @@ def main(argv):
         
         #run remuRNA
         if runRemurna:
-            res_remurna=run_remuRNA(tmp_seq_fa.name,snp)
+            res_remurna=run_remuRNA(tmp_seq_fa.name,snp, window)
             res_remurna=res_remurna.assign(ID=id)
             df_remurna = df_remurna.append(res_remurna, ignore_index=True)
 
         ##run RaSE
-        rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=window)]]
+        if runRase:
+            rase_scores=rase_scores+ [[id,snp[0],run_RaSE(sequence,snp, window=window)]]
                     
         # remove temp file
         os.remove(tmp_seq_fa.name)
@@ -98,18 +100,19 @@ def main(argv):
     output_file_prefix += "_"+str(split_id)
     if runRnasnp:
         df1 = df_rnasnp.set_index('ID')
-        df1['tool-parameters:windows|size=200']=''   
+        df1['tool-parameters:window={}'.format(window)]=''   
         df1.to_csv(path_or_buf=output_file_prefix+"_rnasnp.csv",sep="\t")
     
     if runRemurna:
         df2 = df_remurna.set_index('ID')
-        df2['tool-parameters:']=''
+        df2['tool-parameters:window={}'.format(window)]=''
         df2.to_csv(path_or_buf=output_file_prefix+"_remurna.csv",sep="\t")
     
-    df_rase= pd.DataFrame(rase_scores,columns=['ID','SNP','Score'])
-    df_rase =df_rase.set_index('ID')
-    df_rase['tool-parameters:window=200|avg_bp_prob_cutoff=0.01|hard_threshold=0.5|max_num_edges=3']='' 
-    df_rase.to_csv(path_or_buf=output_file_prefix+"_rase.csv",sep="\t")
+    if runRase:
+        df_rase= pd.DataFrame(rase_scores,columns=['ID','SNP','Score'])
+        df_rase =df_rase.set_index('ID')
+        df_rase['tool-parameters:window={}|avg_bp_prob_cutoff=0.01|hard_threshold=0.5|max_num_edges=3'.format(window)]='' 
+        df_rase.to_csv(path_or_buf=output_file_prefix+"_rase.csv",sep="\t")
     
 
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -147,7 +150,7 @@ def run_remuRNA(wild_fa, snp_tags, window=None):
     tmp_fa.close()
 
     # Make a shell command line
-    cmd = '$(which remuRNA) {} -p=4 '.format(tmp_fa.name)
+    cmd = '$(which remuRNA) {} -p=1 '.format(tmp_fa.name)
     if window is not None:
         cmd += '-w={}'.format(int(window))
     # print cmd
@@ -235,17 +238,24 @@ def run_RaSE(wild_seq, snp_tags, window=150, avg_bp_prob_cutoff=0.01,
     tag_tup = matches.groups()
     tag_tup = (tag_tup[0], int(tag_tup[1])-1, tag_tup[2]) 
     
-    fold = make_fold(window_size=window,
-                          max_bp_span=int(window*(0.80)),
-                          avg_bp_prob_cutoff=avg_bp_prob_cutoff,
-                          hard_threshold=hard_threshold,
-                          max_num_edges=max_num_edges,
-                          no_lonely_bps=True,
-                          nesting=True)
-    fold_vectorize = make_fold_vectorize(complexity=3, nbits=15, fold=fold)
-    from RaSE import compute_SNP_stability
-    score = compute_SNP_stability(wild_seq, snp_tag=tag_tup, fold_vectorize=fold_vectorize)
-    # print 'Rase-Score:', score
+    from RaSE import StructuralStabilityEstimator
+    print window,
+    rase = StructuralStabilityEstimator(wild_seq, complexity=3, nbits=15, window_size=window, max_bp_span=int(window*(0.80)),
+                                        max_num_edges=max_num_edges, avg_bp_prob_cutoff=avg_bp_prob_cutoff, hard_threshold=hard_threshold,
+                                        no_lonely_bps=True, nesting=True)
+    score = rase.stability_score(tag_tup[1], tag_tup[2])
+    #fold = make_fold(window_size=window,
+    #                      max_bp_span=int(window*(0.80)),
+    #                      avg_bp_prob_cutoff=avg_bp_prob_cutoff,
+    #                      hard_threshold=hard_threshold,
+    #                      max_num_edges=max_num_edges,
+    #                      no_lonely_bps=True,
+    #                      nesting=True)
+    #fold_vectorize = make_fold_vectorize(complexity=3, nbits=15, fold=fold)
+    #from RaSE import compute_SNP_stability
+    from RaSE import StructuralStabilityEstimator
+    #score = compute_SNP_stability(wild_seq, snp_tag=tag_tup, fold_vectorize=fold_vectorize) 
+    print 'Rase-Score:', score
     return score
 
 
