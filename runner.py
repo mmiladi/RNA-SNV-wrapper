@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 import sys
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -26,10 +27,10 @@ edenrna_root_dir = os.path.join(os.environ['HOME'],'repositories/eden_rna/')
 edenrna_src_dir = os.path.join(edenrna_root_dir)
 sys.path = [edenrna_src_dir] + sys.path
 
-from RaSE import make_fold, make_fold_vectorize
+#from RaSE import make_fold, make_fold_vectorize
 
 def main(argv):
-
+    print sys.argv
     input_file = sys.argv[1]
     output_file_prefix = sys.argv[2]
     window = int(sys.argv[3])
@@ -59,7 +60,7 @@ def main(argv):
         ranges.append(total_size)
     print 'rangesB: ', ranges
     print 'runner on range: ', ranges[split_id], ranges[split_id+1]
-    runRnasnp = False
+    runRnasnp = True#False
     runRemurna = True#False
     runRase = False
     for fasta in fasta_sequences[ranges[split_id]: ranges[split_id+1]]:

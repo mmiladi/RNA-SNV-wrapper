@@ -1,12 +1,7 @@
 #!/bin/bash
 #$ -cwd
 #$ -l h_vmem=1G
-# -l nice_cpu=1
-# -m ea
 
-
-# -l h_cpu=2:0:0 
-# -l h_rt=3:0:0 
 
 
 
