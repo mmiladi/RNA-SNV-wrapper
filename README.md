@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/74381899.svg)](https://zenodo.org/badge/latestdoi/74381899)
+
 # RNA-SNV-wrapper
 Python wrapper for RNA-SNV structure variation prediction tools
 
